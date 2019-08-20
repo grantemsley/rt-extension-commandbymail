@@ -358,7 +358,8 @@ sub ProcessCommands {
         $body = $part->bodyhandle or next;
 
         #if it looks like it has pseudoheaders, that's our content
-        if ( $body->as_string =~ /^(?:\S+)(?:{.*})?:/m ) {
+        #or if a line is "fixed", "done" or "resolved" (with optional whitespace before and after, and optional punctuation, but nothing else on that line).
+        if ( ($body->as_string =~ /^(?:\S+)(?:{.*})?:/m ) || ($body->as_string =~ /^\s*(resolved|done|fixed)[[:punct:]]*\s*$/im) )  {
             @content = $body->as_lines;
             last;
         }
@@ -373,6 +374,12 @@ sub ProcessCommands {
     my $found_pseudoheaders = 0;
     foreach my $line (@content) {
         next if $line =~ /^\s*$/ && ! $found_pseudoheaders;
+
+	# Probably a better way to do this, but if the line matches 'fixed', 'done' or 'resolved', replace it with the expected 'Status: resolved'
+	if ($line =~ /^\s*(resolved|done|fixed)[[:punct:]]*\s*$/i) {
+	    $line = 'Status: resolved'
+	}
+
         last if $line !~ /^(?:(\S+(?:{.*})?)\s*?:\s*?(.*)\s*?|)$/;
         last if not defined $1 and $found_pseudoheaders;
         next if not defined $1;
